@@ -38,12 +38,6 @@
             <div>
                 URL der Mailingliste: {{ $group->mailingListURL }}
             </div>
-            <div>
-                Admin-Account der Mailing-Liste: {{ $group->mailingListAdmin }}
-            </div>
-            <div>
-                Admin-Passwort der Mailingliste: geht dich gar nichts an!
-            </div>
             @endif
             @endauth
         </div>
@@ -93,6 +87,11 @@
                             {!! Form::submit('Nein', ['class' => 'btn btn-secondary btn-sm']) !!}
                             @endif
                             {!! Form::close() !!}
+                            @if ( (in_array($groupmember->email, $inCockpitNotInMailmans) && $groupmember->toBeInMailinglist == 1) || (in_array($groupmember->email, $notToBeInMailmans) ) )
+                            {!! Form::open(['method' => 'POST','route' => ['groups.toggleMembershipInMailman', $groupmember->id],'style'=>'display:inline']) !!}
+                            {!! Form::submit('Mailman korrigieren', ['class' => 'btn btn-warning btn-sm']) !!}
+                            {!! Form::close() !!}
+                            @endif
                         </td>
                         <td>
                             {!! Form::open(['method' => 'POST','route' => ['groups.toggleToBeInNextCloud', $groupmember->id],'style'=>'display:inline']) !!}
@@ -130,6 +129,23 @@
                             {!! Form::open(['method' => 'POST','route' => ['groups.toggleMembershipInKeycloakByEmail', $group->id],'style'=>'display:inline']) !!}
                             {!! Form::hidden('email', $inKeyCloakNotInCockpit) !!}
                             {!! Form::submit('Keycloak löschen', ['class' => 'btn btn-warning btn-sm']) !!}
+                            {!! Form::close() !!}
+                        </td>
+                    </tr>
+                @endforeach
+                @foreach($inMailmanNotInCockpits as $inMailmanNotInCockpit)
+                    <tr>
+                        <th scope="row"></th>
+                        <td>{{ $inMailmanNotInCockpit }}</td>
+                        <td colspan=3>
+                            In Mailman aber fehlt hier
+                            {!! Form::open(['method' => 'POST','route' => ['groups.addmember', $group->id],'style'=>'display:inline']) !!}
+                            {!! Form::hidden('email', $inMailmanNotInCockpit) !!}
+                            {!! Form::submit('hinzufügen', ['class' => 'btn btn-primary btn-sm']) !!}
+                            {!! Form::close() !!}
+                            {!! Form::open(['method' => 'POST','route' => ['groups.toggleMembershipInMailmanByEmail', $group->id],'style'=>'display:inline']) !!}
+                            {!! Form::hidden('email', $inMailmanNotInCockpit) !!}
+                            {!! Form::submit('Mailman löschen', ['class' => 'btn btn-warning btn-sm']) !!}
                             {!! Form::close() !!}
                         </td>
                     </tr>

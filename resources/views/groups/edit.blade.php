@@ -97,18 +97,6 @@
                     @endif
                 </div>
                 <div class="mb-3">
-                    <label for="mailingListAdmin" class="form-label">Admin-User der Mailingliste</label>
-                    <input value="{{ $group->mailingListAdmin }}"
-                        type="text"
-                        class="form-control"
-                        name="mailingListAdmin"
-                        placeholder="mailingListAdmin">
-                    @if ($errors->has('mailingListAdmin'))
-                        <span class="text-danger text-left">{{ $errors->first('mailingListAdmin') }}</span>
-                    @endif
-                </div>
-
-                <div class="mb-3">
                     <label for="mailingListPassword" class="form-label">Admin-Passwort der Mailing-Liste (leer lassen, um nicht zu ändern)</label>
                     <input
                         type="password"
