@@ -16,7 +16,6 @@ class Group extends Model
         'moderated',
         'has_mailinglist',
         'mailingListURL',
-        'mailingListAdmin',
         'mailingListPassword',
     ];
 

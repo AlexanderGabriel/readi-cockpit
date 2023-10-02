@@ -21,7 +21,6 @@ return new class extends Migration
             $table->boolean("moderated")->default(0);
             $table->boolean("has_mailinglist")->default(0);
             $table->string("mailingListURL")->nullable();
-            $table->string("mailingListAdmin")->nullable();
             $table->string("mailingListPassword")->nullable();
         });
     }

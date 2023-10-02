@@ -29,7 +29,6 @@
                 <th scope="col" width="15%">Keycloak Admin-Group</th>
                 <th scope="col" width="15%">Mailingliste</th>
                 <th scope="col" width="15%">URL</th>
-                <th scope="col" width="15%">Admin</th>
                 @endif
                 @endauth
                 <th scope="col" width="1%" colspan="3"></th>
@@ -48,7 +47,6 @@
                         <td>{{ $group->keycloakAdminGroup }}</td>
                         <td>@if ( $group->has_mailinglist == 1 )ja @else nein @endif </td>
                         <td>{{ $group->mailingListURL }}</td>
-                        <td>{{ $group->mailingListAdmin }}</td>
                         @endif
                         @endauth
                         <td><a href="{{ route('groups.show', $group->id) }}" class="btn btn-outline-primary btn-sm">Details anzeigen</a></td>
