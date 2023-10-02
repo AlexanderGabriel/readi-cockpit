@@ -46,6 +46,8 @@ Route::group(['namespace' => 'App\Http\Controllers'], function()
             Route::post('/{group}/toggleToBeInNextCloud', 'GroupsController@toggleToBeInNextCloud')->name('groups.toggleToBeInNextCloud');
             Route::post('/{group}/toggleMembershipInKeycloak', 'GroupsController@toggleMembershipInKeycloak')->name('groups.toggleMembershipInKeycloak');
             Route::post('/{group}/toggleMembershipInKeycloakByEmail', 'GroupsController@toggleMembershipInKeycloakByEmail')->name('groups.toggleMembershipInKeycloakByEmail');
+            Route::post('/{group}/toggleMembershipInMailman', 'GroupsController@toggleMembershipInMailman')->name('groups.toggleMembershipInMailman');
+            Route::post('/{group}/toggleMembershipInMailmanByEmail', 'GroupsController@toggleMembershipInMailmanByEmail')->name('groups.toggleMembershipInMailmanByEmail');
             Route::post('/{group}/toggleToBeInGroup', 'GroupsController@toggleToBeInGroup')->name('groups.toggleToBeInGroup');
             Route::post('/{group}/allowJoin', 'GroupsController@allowJoin')->name('groups.allowJoin');
         });

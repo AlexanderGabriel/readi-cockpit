@@ -115,6 +115,8 @@ class GroupsController extends Controller
                 $kc_group = $subgroup->id;
             }
         }
+        $inCockpitNotInKeycloaks = Array();
+        $inKeyCloakNotInCockpits = Array();
         if($foundSubgroup) {
             $res = $client->request('GET', env('KEYCLOAK_BASE_URL')."/admin/realms/".env('KEYCLOAK_REALM')."/groups/$kc_group/members", ['headers' => $headers]);
             $kc_groupmembers = json_decode($res->getBody());
@@ -134,13 +136,28 @@ class GroupsController extends Controller
             $inKeyCloakNotInCockpits = array_diff($kc_groupmemberemails, $groupmemberemails);
         }
 
+        $mailmanMembers = $group->get_mailmanmembers();
+        $inMailmanNotInCockpits = Array();
+        if(count($mailmanMembers) > 0) {
+            $inMailmanNotInCockpits = array_diff($mailmanMembers, $groupmemberemails);
+        }
+        $inCockpitNotInMailmans = Array();
+        $inCockpitNotInMailmans = array_diff($groupmemberemails, $mailmanMembers);
+        $notToBeInMailmans = Array();
+        foreach ($groupmembers as $groupmember) {
+            if(!$groupmember->toBeInMailinglist && in_array($groupmember->email, $mailmanMembers)) array_push($notToBeInMailmans, $groupmember->email);
+        }
+
         return view('groups.show', [
             'group' => $group
             , 'groupmembers' => $groupmembers
             , 'canJoinGroup' => $canJoinGroup
             , 'inKeyCloakNotInCockpits' => $inKeyCloakNotInCockpits
             , 'inCockpitNotInKeycloaks' => $inCockpitNotInKeycloaks
+            , 'inCockpitNotInMailmans' => $inCockpitNotInMailmans
+            , 'inMailmanNotInCockpits' => $inMailmanNotInCockpits
             , 'notToBeInKeyCloaks' => $notToBeInKeyCloaks
+            , 'notToBeInMailmans' => $notToBeInMailmans
         ]);
 
     }
@@ -358,6 +375,10 @@ class GroupsController extends Controller
                         $kc_group = $subgroup->id;
                     }
                 }
+                if(!$foundKcGroup) {
+                    return redirect()->route('groups.show', $id)
+                    ->withError(__('Die Admin-Gruppe wurde im Keycloak nicht gefunden!.'));
+                }
 
                 $res = $client->request('GET', env('KEYCLOAK_BASE_URL')."/admin/realms/".env('KEYCLOAK_REALM')."/groups/$kc_group/members", ['headers' => $headers]);
                 $kc_groupmembers = json_decode($res->getBody());
@@ -545,6 +566,53 @@ class GroupsController extends Controller
         ->withWarning(__('Nichts verändert.'));
 
     }
+
+    public function toggleMembershipInMailman(request $request, string $id) {
+        $groupmember = Groupmember::findOrFail($id);
+        $group_id = $groupmember->group_id;
+        $group = Group::findOrFail($group_id);
+        //Nur Administratoren dürfen diese Eigenschaft bearbeiten
+        if(!Auth::hasRole('Administratoren') && !Auth::user()->hasRole($group->keycloakAdminGroup)) {
+            return abort(403);
+        }
+
+        $mailmanMembers = $group->get_mailmanmembers();
+        if(!in_array($groupmember->email, $mailmanMembers)) {
+            $group->add_mailmanmembers([$groupmember->email]);
+
+            return redirect()->route('groups.show', $group_id)
+            ->withSuccess(__('User wurde der Mailingliste hinzugefügt.'));
+        }
+        else {
+            $group->remove_mailmanmembers([$groupmember->email]);
+            return redirect()->route('groups.show', $group_id)
+            ->withSuccess(__('User wurde aus Mailman entfernt.'));
+        }
+
+    }
+
+    public function toggleMembershipInMailmanByEmail(request $request, string $id) {
+        $group = Group::findOrFail($id);
+        //Nur Administratoren dürfen diese Eigenschaft bearbeiten
+        if(!Auth::hasRole('Administratoren') && !Auth::user()->hasRole($group->keycloakAdminGroup)) {
+            return abort(403);
+        }
+
+        $mailmanMembers = $group->get_mailmanmembers();
+        if(!in_array($request->email, $mailmanMembers)) {
+            $group->add_mailmanmembers([$request->email]);
+
+            return redirect()->route('groups.show', $id)
+            ->withSuccess(__('User wurde der Mailingliste hinzugefügt.'));
+        }
+        else {
+            $group->remove_mailmanmembers([$request->email]);
+            return redirect()->route('groups.show', $id)
+            ->withSuccess(__('User wurde aus Mailman entfernt.'));
+        }
+
+    }
+
 
 
 
