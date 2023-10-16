@@ -54,6 +54,7 @@
         {!! Form::submit('Gruppe verlassen', ['class' => 'btn btn-warning btn-sm']) !!}
         @endif
         {!! Form::close() !!}
+        <div class="btn btn-warning btn-sm"><a href="mailto:@foreach($groupmembers as $groupmember){{ $groupmember->email}};@endforeach">Email an alle Mitglieder</a></div>
         <table class="table table-striped">
             <thead>
             <tr>
