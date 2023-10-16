@@ -12,8 +12,8 @@
             <p class="card-text">
                 Verwaltung der Projektgruppen<br>
                 <ul>
-                    <li>Mitgliedschaften und Keycloak-Berechtigungen synchronisieren</li>
-                    <li>Demnächst auch Mitgliedschaften auf Verteilern ;)</li>
+                    <li>Mitgliedschaften von Projektgruppen verwalten</li>
+                    <li>Ermöglicht auch die Steuerung der Mitgliedschaften in Keycloak-Gruppen und Mailman-Listen</li>
                 </ul>
             </p>
             <a href="{{ URL::route("groups.index") }}" class="btn btn-outline-primary">Projektgruppen</a>
