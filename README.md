@@ -19,3 +19,9 @@ Final version should manage membership in keycloak an mailman and maybe help kee
 
 ### Update Keycloak groupmembership
 ![Update Keycloakgroup](img/updateKeycloak.png)
+
+## ToDo
+- Add Button to send Mail to all Members
+- Improve Emails...
+- Automatic-Mode for Gruops (automatically add new members to Keycloak and Mailman)
+- Data-Cleanup Module (list all addresses/make it possible for responsibles to find outdated addresses and remove them from all systems)
