@@ -33,11 +33,13 @@
                 KeycloakAdminGroup: {{ $group->keycloakAdminGroup }}
             </div>
             <div>
-                Mailingliste: {{ $group->has_mailinglist }}
+                Mailingliste: @if ( $group->has_mailinglist == 1 )ja @else nein @endif
             </div>
+            @if($group->has_mailinglist)
             <div>
                 URL der Mailingliste: {{ $group->mailingListURL }}
             </div>
+            @endif
             @endif
             @endauth
         </div>
@@ -58,7 +60,9 @@
                 <th scope="col" width="1%">#</th>
                 <th scope="col" width="70%">E-Mail</th>
                 @if (Auth::user()->hasRole('Administratoren') || Auth::user()->hasRole($group->keycloakAdminGroup))
+                @if($group->has_mailinglist )
                 <th scope="col" width="15%">Liste</th>
+                @endif
                 <th scope="col" width="15%">NextCloud</th>
                 @endif
                 <th scope="col" width="1%" colspan="3"></th>
@@ -79,6 +83,7 @@
                             @endif
                         </td>
                         @if (Auth::user()->hasRole('Administratoren') || Auth::user()->hasRole($group->keycloakAdminGroup))
+                        @if($group->has_mailinglist )
                         <td>
                             {!! Form::open(['method' => 'POST','route' => ['groups.toggleToBeInMailinglist', $groupmember->id],'style'=>'display:inline']) !!}
                             @if ( $groupmember->toBeInMailinglist == 1 )
@@ -93,6 +98,7 @@
                             {!! Form::close() !!}
                             @endif
                         </td>
+                        @endif
                         <td>
                             {!! Form::open(['method' => 'POST','route' => ['groups.toggleToBeInNextCloud', $groupmember->id],'style'=>'display:inline']) !!}
                             @if ( $groupmember->toBeInNextCloud == 1 )

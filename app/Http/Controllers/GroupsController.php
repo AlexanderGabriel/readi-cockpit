@@ -117,6 +117,8 @@ class GroupsController extends Controller
         }
         $inCockpitNotInKeycloaks = Array();
         $inKeyCloakNotInCockpits = Array();
+        $groupmemberemails = Array();
+        $notToBeInKeyCloaks = Array();
         if($foundSubgroup) {
             $res = $client->request('GET', env('KEYCLOAK_BASE_URL')."/admin/realms/".env('KEYCLOAK_REALM')."/groups/$kc_group/members", ['headers' => $headers]);
             $kc_groupmembers = json_decode($res->getBody());
@@ -125,8 +127,6 @@ class GroupsController extends Controller
             foreach ($kc_groupmembers as $kc_groupmember) {
                 array_push($kc_groupmemberemails, $kc_groupmember->email);
             }
-            $groupmemberemails = Array();
-            $notToBeInKeyCloaks = Array();
             foreach ($groupmembers as $groupmember) {
                 array_push($groupmemberemails, $groupmember->email);
                 if(!$groupmember->toBeInNextCloud && in_array($groupmember->email, $kc_groupmemberemails)) array_push($notToBeInKeyCloaks, $groupmember->email);
@@ -135,17 +135,19 @@ class GroupsController extends Controller
             $inCockpitNotInKeycloaks = array_diff($groupmemberemails, $kc_groupmemberemails);
             $inKeyCloakNotInCockpits = array_diff($kc_groupmemberemails, $groupmemberemails);
         }
-
-        $mailmanMembers = $group->get_mailmanmembers();
+        
         $inMailmanNotInCockpits = Array();
-        if(count($mailmanMembers) > 0) {
-            $inMailmanNotInCockpits = array_diff($mailmanMembers, $groupmemberemails);
-        }
         $inCockpitNotInMailmans = Array();
-        $inCockpitNotInMailmans = array_diff($groupmemberemails, $mailmanMembers);
         $notToBeInMailmans = Array();
-        foreach ($groupmembers as $groupmember) {
-            if(!$groupmember->toBeInMailinglist && in_array($groupmember->email, $mailmanMembers)) array_push($notToBeInMailmans, $groupmember->email);
+        if($group->has_mailinglist) {
+            $mailmanMembers = $group->get_mailmanmembers();
+            if(count($mailmanMembers) > 0) {
+                $inMailmanNotInCockpits = array_diff($mailmanMembers, $groupmemberemails);
+            }
+            $inCockpitNotInMailmans = array_diff($groupmemberemails, $mailmanMembers);
+            foreach ($groupmembers as $groupmember) {
+                if(!$groupmember->toBeInMailinglist && in_array($groupmember->email, $mailmanMembers)) array_push($notToBeInMailmans, $groupmember->email);
+            }
         }
 
         return view('groups.show', [
@@ -575,6 +577,11 @@ class GroupsController extends Controller
         if(!Auth::hasRole('Administratoren') && !Auth::user()->hasRole($group->keycloakAdminGroup)) {
             return abort(403);
         }
+        //Geht nur, wenn die Gruppe eine Mailingliste hat
+        if(!$group->has_mailinglist) {
+            return redirect()->route('groups.show', $group_id)
+            ->withWarning(__('Die Gruppe hat keine Mailingliste.'));
+        } 
 
         $mailmanMembers = $group->get_mailmanmembers();
         if(!in_array($groupmember->email, $mailmanMembers)) {
