@@ -57,6 +57,11 @@ class GroupsController extends Controller
         } else {
             $newModerated = 1;
         }
+        if(!$request->has('automatic_mode')) {
+            $newautomatic_mode = 0;
+        } else {
+            $newautomatic_mode = 1;
+        }
 
         Group::create([
             "name" => $request->name,
@@ -68,6 +73,7 @@ class GroupsController extends Controller
             "mailingListURL" => $request->mailingListURL,
             "mailingListAdmin" => $request->mailingListAdmin,
             "mailingListPassword" => $request->mailingListPassword,
+            "automatic_mode" => $newautomatic_mode,
         ]);
 
         return redirect()->route('groups.index')
@@ -91,49 +97,28 @@ class GroupsController extends Controller
             $canJoinGroup = true;
         }
 
-        //Keycloak-Infos abfragen
-        $client = new Client();
-        $res = $client->request('POST', env('KEYCLOAK_BASE_URL').'/realms/'.env('KEYCLOAK_REALM').'/protocol/openid-connect/token', [
-            'form_params' => [
-                'client_id' => 'admin-cli'
-                , 'username' => env('KEYCLOAK_API_USER')
-                , 'password' => env('KEYCLOAK_API_PASSWORD')
-                , 'grant_type' => 'password'
-                , 'scope' => 'openid'
-            ]
-        ]);
-        $access_token = json_decode($res->getBody())->access_token;
-
-        $headers = ['Authorization' => "bearer {$access_token}"];
-        $res = $client->request('GET', env('KEYCLOAK_BASE_URL').'/admin/realms/'.env('KEYCLOAK_REALM').'/groups/'.env('KEYCLOAK_PARENTGROUP'), ['headers' => $headers]);
-
-        $kc_groups = json_decode($res->getBody());
-        $foundSubgroup = false;
-        foreach($kc_groups->subGroups as $subgroup) {
-            if($subgroup->name == $group->keycloakGroup) {
-                $foundSubgroup = true;
-                $kc_group = $subgroup->id;
-            }
+        $groupmemberemails = Array();
+        foreach ($groupmembers as $groupmember) {
+            array_push($groupmemberemails, $groupmember->email);
         }
         $inCockpitNotInKeycloaks = Array();
         $inKeyCloakNotInCockpits = Array();
-        $groupmemberemails = Array();
         $notToBeInKeyCloaks = Array();
-        if($foundSubgroup) {
-            $res = $client->request('GET', env('KEYCLOAK_BASE_URL')."/admin/realms/".env('KEYCLOAK_REALM')."/groups/$kc_group/members", ['headers' => $headers]);
-            $kc_groupmembers = json_decode($res->getBody());
-
+        $kc_groupmembers = $group->get_keycloakmembers($group);
+        if($kc_groupmembers) {
             $kc_groupmemberemails = Array();
             foreach ($kc_groupmembers as $kc_groupmember) {
                 array_push($kc_groupmemberemails, $kc_groupmember->email);
             }
             foreach ($groupmembers as $groupmember) {
-                array_push($groupmemberemails, $groupmember->email);
                 if(!$groupmember->toBeInNextCloud && in_array($groupmember->email, $kc_groupmemberemails)) array_push($notToBeInKeyCloaks, $groupmember->email);
             }
 
             $inCockpitNotInKeycloaks = array_diff($groupmemberemails, $kc_groupmemberemails);
             $inKeyCloakNotInCockpits = array_diff($kc_groupmemberemails, $groupmemberemails);
+        }
+        else {
+            $inCockpitNotInKeycloaks = $groupmemberemails;
         }
         
         $inMailmanNotInCockpits = Array();
@@ -207,6 +192,11 @@ class GroupsController extends Controller
         } else {
             $newModerated = 1;
         }
+        if(!$request->has('automatic_mode')) {
+            $newautomatic_mode = 0;
+        } else {
+            $newautomatic_mode = 1;
+        }
 
         if(Auth::hasRole('Administratoren')) {
             $group->update([
@@ -219,6 +209,7 @@ class GroupsController extends Controller
                 "mailingListURL" => $request->mailingListURL,
                 "mailingListAdmin" => $request->mailingListAdmin,
                 "mailingListPassword" => $newMailingListPassword,
+                "automatic_mode" => $newautomatic_mode,
                 ]
             );
         }

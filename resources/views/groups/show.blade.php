@@ -24,6 +24,14 @@
                 Nein
                 @endif
             </div>
+            <div>
+                Automatikmodus:
+                @if ( $group->automatic_mode == 1 )
+                Ja
+                @else
+                Nein
+                @endif
+            </div>
             @auth
             @if (Auth::user()->hasRole('Administratoren'))
             <div>

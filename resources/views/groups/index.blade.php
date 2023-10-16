@@ -23,6 +23,7 @@
                 <th scope="col" width="15%">Name</th>
                 <th scope="col" width="15%">Beschreibung</th>
                 <th scope="col" width="15%">Moderiert</th>
+                <th scope="col" width="15%">Automatikmodus</th>
                 @auth
                 @if (Auth::user()->hasRole('Administratoren'))
                 <th scope="col" width="15%">Keycloak-Gruppe</th>
@@ -41,6 +42,7 @@
                         <td>{{ $group->name }}</td>
                         <td>{{ $group->description }}</td>
                         <td>@if ( $group->moderated == 1 )ja @else nein @endif </td>
+                        <td>@if ( $group->automatic_mode == 1 )ja @else nein @endif </td>
                         @auth
                         @if (Auth::user()->hasRole('Administratoren'))
                         <td>{{ $group->keycloakGroup }}</td>
