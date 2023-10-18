@@ -68,12 +68,10 @@
             <tr>
                 <th scope="col" width="1%">#</th>
                 <th scope="col" width="70%">E-Mail</th>
-                @if (Auth::user()->hasRole('Administratoren') || Auth::user()->hasRole($group->keycloakAdminGroup))
                 @if($group->has_mailinglist )
                 <th scope="col" width="15%">Liste</th>
                 @endif
                 <th scope="col" width="15%">NextCloud</th>
-                @endif
                 <th scope="col" width="1%" colspan="3"></th>
             </tr>
             </thead>

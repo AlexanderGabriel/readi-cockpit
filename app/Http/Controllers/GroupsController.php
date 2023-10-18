@@ -308,17 +308,36 @@ class GroupsController extends Controller
         $group_id = $groupmember->group_id;
         $group = Group::findOrFail($group_id);
         //Nur Administratoren dürfen diese Eigenschaft bearbeiten
-        if(!Auth::hasRole('Administratoren') && !Auth::user()->hasRole($group->keycloakAdminGroup)) {
+        if(!Auth::hasRole('Administratoren') && !Auth::user()->hasRole($group->keycloakAdminGroup) && Auth::user()->email != $groupmember->email) {
             return abort(403);
         }
 
+        if($group->automatic_mode) {
+            //Änderungen direkt durchführen
+            //Wenn user existiert
+            if(!$group->get_keycloakuserbymail($groupmember->email)) {
+                return redirect()->route('groups.show', $group_id)
+                    ->withError(__('User existiert im Keycloak gar nicht.'));
+            }
+            if(!$group->toggle_keycloakmember($group->keycloakGroup, $groupmember->email, $groupmember->toBeInNextCloud)) {
+                return redirect()->route('groups.show', $group_id)
+                    ->withError(__('Gruppenmitgliedschaft wurde nicht abgeändert werden.'));
+            }
+            $groupmember->update([
+                "email" => $groupmember->email,
+                "toBeInNextCloud" => !$groupmember->toBeInNextCloud,
+                "toBeInMailinglist" => $groupmember->toBeInMailinglist,
+            ]);
+            return redirect()->route('groups.show', $group_id)
+                ->withSuccess(__('Nextcloud-Berechtigung wurde abgeändert.'));
+        }
         $groupmember->update([
             "email" => $groupmember->email,
             "toBeInNextCloud" => !$groupmember->toBeInNextCloud,
             "toBeInMailinglist" => $groupmember->toBeInMailinglist,
         ]);
         return redirect()->route('groups.show', $group_id)
-            ->withSuccess(__('Mailinglistenstatus wurde abgeändert.'));
+            ->withSuccess(__('Nextcloud-Berechtigung wurden im Cockpit abgeändert. Der Automatik-Modus ist nicht aktiv, ein Gruppenadministrator muss die Änderungen erst durchführen'));
     }
 
     public function toggleToBeInGroup(request $request, string $id) {

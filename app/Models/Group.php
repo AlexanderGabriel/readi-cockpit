@@ -56,7 +56,7 @@ class Group extends Model
     {
         if(!isset($this->client)) {
             $this->client = new Client();
-            $res = $client->request('POST', env('KEYCLOAK_BASE_URL').'/realms/'.env('KEYCLOAK_REALM').'/protocol/openid-connect/token', [
+            $res = $this->client->request('POST', env('KEYCLOAK_BASE_URL').'/realms/'.env('KEYCLOAK_REALM').'/protocol/openid-connect/token', [
                 'form_params' => [
                     'client_id' => 'admin-cli'
                     , 'username' => env('KEYCLOAK_API_USER')
@@ -68,8 +68,6 @@ class Group extends Model
             $access_token = json_decode($res->getBody())->access_token;
             $this->headers = ['Authorization' => "bearer {$access_token}"];
         }
-
-
     }
 
     public function get_keycloakgroups() {
@@ -116,7 +114,7 @@ class Group extends Model
         $kc_groups = $this->get_keycloakgroups();
         $foundSubgroup = false;
         foreach($kc_groups->subGroups as $subgroup) {
-            if($subgroup->name == $group->keycloakGroup) {
+            if($subgroup->name == $group) {
                 $foundSubgroup = true;
                 $kc_group = $subgroup->id;
             }
@@ -125,24 +123,35 @@ class Group extends Model
         else {
             $res = $this->client->request('GET', env('KEYCLOAK_BASE_URL')."/admin/realms/".env('KEYCLOAK_REALM')."/groups/$kc_group/members", ['headers' => $this->headers]);
             $kc_groupmembers = json_decode($res->getBody());
-            return $kc_groupmembers;
+            $groupmembers = array();
+            foreach($kc_groupmembers as $kc_groupmember) {
+                array_push($groupmembers, $kc_groupmember->email);
+            }
+            return $groupmembers;
         }
     }
 
-    public function add_keycloakmember($group, $email) {
+    public function toggle_keycloakmember($group, $email, $toBeInNextCloud) {
         $this->connectToKeycloak();
         $kc_groupmembers = $this->get_keycloakmembers($group);
-        if(!$kc_groupmembers) return false;
+        if($kc_groupmembers === false) return false;
         $kc_user_id = $this->get_keycloakuserbymail($email);
-        if(!$kc_user_id) return false;
+        if($kc_user_id === false) return false;
         $kc_group = $this->get_keycloakgroupbyname($group);
-        if(!$kc_group) return false;
+        if($kc_group === false) return false;
 
-        if(!in_array($email, $kc_groupmembers)) {
+        if(!in_array($email, $kc_groupmembers) && !$toBeInNextCloud) {
             $this->client->request('PUT', env('KEYCLOAK_BASE_URL').'/admin/realms/'.env('KEYCLOAK_REALM').'/users/'.$kc_user_id.'/groups/'.$kc_group, ['headers' => $this->headers]);
+        }
+        elseif (in_array($email, $kc_groupmembers) && $toBeInNextCloud) {
+            $this->client->delete(env('KEYCLOAK_BASE_URL').'/admin/realms/'.env('KEYCLOAK_REALM').'/users/'.$kc_user_id.'/groups/'.$kc_group, ['headers' => $this->headers]);
+        }
+        else {
+            return false;
         }
         return true;
     }
+
 
 
 
