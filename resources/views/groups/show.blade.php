@@ -82,7 +82,7 @@
                     <tr>
                         <th scope="row">{{ $groupmember->id }}</th>
                         <td>
-                            @if ( $groupmember->waitingForJoin )
+                            @if ( $groupmember->waitingForJoin && (Auth::user()->hasRole('Administratoren') || Auth::user()->hasRole($group->keycloakAdminGroup)))
                             ({{ $groupmember->email }})
                             {!! Form::open(['method' => 'POST','route' => ['groups.allowJoin', $groupmember->id],'style'=>'display:inline']) !!}
                             {!! Form::submit('Genehmigen', ['class' => 'btn btn-success btn-sm']) !!}
@@ -91,7 +91,7 @@
                             {{ $groupmember->email }}
                             @endif
                         </td>
-                        @if (Auth::user()->hasRole('Administratoren') || Auth::user()->hasRole($group->keycloakAdminGroup))
+                        @if ($groupmember->email == Auth::user()->email || (Auth::user()->hasRole('Administratoren') || Auth::user()->hasRole($group->keycloakAdminGroup)))
                         @if($group->has_mailinglist )
                         <td>
                             {!! Form::open(['method' => 'POST','route' => ['groups.toggleToBeInMailinglist', $groupmember->id],'style'=>'display:inline']) !!}
@@ -101,7 +101,7 @@
                             {!! Form::submit('Nein', ['class' => 'btn btn-secondary btn-sm']) !!}
                             @endif
                             {!! Form::close() !!}
-                            @if ( (in_array($groupmember->email, $inCockpitNotInMailmans) && $groupmember->toBeInMailinglist == 1) || (in_array($groupmember->email, $notToBeInMailmans) ) )
+                            @if (((in_array($groupmember->email, $inCockpitNotInMailmans) && $groupmember->toBeInMailinglist == 1) || (in_array($groupmember->email, $notToBeInMailmans) )) && (Auth::user()->hasRole('Administratoren') || Auth::user()->hasRole($group->keycloakAdminGroup)))
                             {!! Form::open(['method' => 'POST','route' => ['groups.toggleMembershipInMailman', $groupmember->id],'style'=>'display:inline']) !!}
                             {!! Form::submit('Mailman korrigieren', ['class' => 'btn btn-warning btn-sm']) !!}
                             {!! Form::close() !!}
@@ -116,17 +116,21 @@
                             {!! Form::submit('Nein', ['class' => 'btn btn-secondary btn-sm']) !!}
                             @endif
                             {!! Form::close() !!}
-                            @if ( (in_array($groupmember->email, $inCockpitNotInKeycloaks) && $groupmember->toBeInNextCloud == 1) || (in_array($groupmember->email, $notToBeInKeyCloaks) ) )
+                            @if (((in_array($groupmember->email, $inCockpitNotInKeycloaks) && $groupmember->toBeInNextCloud == 1) || (in_array($groupmember->email, $notToBeInKeyCloaks))) && (Auth::user()->hasRole('Administratoren') || Auth::user()->hasRole($group->keycloakAdminGroup)))
                             {!! Form::open(['method' => 'POST','route' => ['groups.toggleMembershipInKeycloak', $groupmember->id],'style'=>'display:inline']) !!}
                             {!! Form::submit('KC korrigieren', ['class' => 'btn btn-warning btn-sm']) !!}
                             {!! Form::close() !!}
                             @endif
                         </td>
+                        @if((Auth::user()->hasRole('Administratoren') || Auth::user()->hasRole($group->keycloakAdminGroup)))
                         <td>
                             {!! Form::open(['method' => 'DELETE','route' => ['groups.deletemember', $groupmember->id],'style'=>'display:inline']) !!}
                             {!! Form::submit('Delete', ['class' => 'btn btn-danger btn-sm']) !!}
                             {!! Form::close() !!}
                         </td>
+                        @endif
+                        @else
+                        <td></td><td></td><td></td>
                         @endif
                     </tr>
                 @endforeach
