@@ -9,6 +9,7 @@
         <div class="mt-2">
             @include('layouts.partials.messages')
         </div>
+        <div class="btn btn-info btn-sm"><a class="nav-link" href="mailto:@foreach($groupmembers as $groupmember){{ $groupmember->email}};@endforeach">Email an alle Mitglieder</a></div>
         <div class="container mt-4">
             <div>
                 Name: {{ $group->name }}
