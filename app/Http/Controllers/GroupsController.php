@@ -120,7 +120,7 @@ class GroupsController extends Controller
         else {
             $inCockpitNotInKeycloaks = $groupmemberemails;
         }
-        
+
         $inMailmanNotInCockpits = Array();
         $inCockpitNotInMailmans = Array();
         $notToBeInMailmans = Array();
@@ -572,17 +572,17 @@ class GroupsController extends Controller
         if(!$group->has_mailinglist) {
             return redirect()->route('groups.show', $group_id)
             ->withWarning(__('Die Gruppe hat keine Mailingliste.'));
-        } 
+        }
 
         $mailmanMembers = $group->get_mailmanmembers();
         if(!in_array($groupmember->email, $mailmanMembers)) {
-            $group->add_mailmanmembers([$groupmember->email]);
+            $group->add_mailmanmember($groupmember->email);
 
             return redirect()->route('groups.show', $group_id)
             ->withSuccess(__('User wurde der Mailingliste hinzugefügt.'));
         }
         else {
-            $group->remove_mailmanmembers([$groupmember->email]);
+            $group->remove_mailmanmember($groupmember->email);
             return redirect()->route('groups.show', $group_id)
             ->withSuccess(__('User wurde aus Mailman entfernt.'));
         }
@@ -598,20 +598,16 @@ class GroupsController extends Controller
 
         $mailmanMembers = $group->get_mailmanmembers();
         if(!in_array($request->email, $mailmanMembers)) {
-            $group->add_mailmanmembers([$request->email]);
+            $group->add_mailmanmember($request->email);
 
             return redirect()->route('groups.show', $id)
             ->withSuccess(__('User wurde der Mailingliste hinzugefügt.'));
         }
         else {
-            $group->remove_mailmanmembers([$request->email]);
+            $group->remove_mailmanmember($request->email);
             return redirect()->route('groups.show', $id)
             ->withSuccess(__('User wurde aus Mailman entfernt.'));
         }
 
     }
-
-
-
-
 }
