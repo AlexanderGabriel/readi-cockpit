@@ -66,7 +66,6 @@
         <table class="table table-striped">
             <thead>
             <tr>
-                <th scope="col" width="1%">#</th>
                 <th scope="col" width="70%">E-Mail</th>
                 @if($group->has_mailinglist )
                 <th scope="col" width="15%">Liste</th>
@@ -78,7 +77,6 @@
             <tbody>
                 @foreach($groupmembers as $groupmember)
                     <tr>
-                        <th scope="row">{{ $groupmember->id }}</th>
                         <td>
                             @if ( $groupmember->waitingForJoin && (Auth::user()->hasRole('Administratoren') || Auth::user()->hasRole($group->keycloakAdminGroup)))
                             ({{ $groupmember->email }})
@@ -86,10 +84,10 @@
                             {!! Form::submit('Genehmigen', ['class' => 'btn btn-success btn-sm']) !!}
                             {!! Form::close() !!}
                             @else
-                            {{ $groupmember->email }}
+                            {{ $groupmember->email }} @if($groupmember->waitingForJoin)(wartet auf Beitrigg)@endif
                             @endif
                         </td>
-                        @if ($groupmember->email == Auth::user()->email || (Auth::user()->hasRole('Administratoren') || Auth::user()->hasRole($group->keycloakAdminGroup)))
+                        @if (!$groupmember->waitingForJoin && ($groupmember->email == Auth::user()->email || (Auth::user()->hasRole('Administratoren') || Auth::user()->hasRole($group->keycloakAdminGroup))))
                         @if($group->has_mailinglist )
                         <td>
                             {!! Form::open(['method' => 'POST','route' => ['groups.toggleToBeInMailinglist', $groupmember->id],'style'=>'display:inline']) !!}
@@ -114,7 +112,16 @@
                             {!! Form::submit('Nein', ['class' => 'btn btn-secondary btn-sm']) !!}
                             @endif
                             {!! Form::close() !!}
-                            @if (((in_array($groupmember->email, $inCockpitNotInKeycloaks) && $groupmember->toBeInNextCloud == 1) || (in_array($groupmember->email, $notToBeInKeyCloaks))) && (Auth::user()->hasRole('Administratoren') || Auth::user()->hasRole($group->keycloakAdminGroup)))
+                            @if (
+                                (
+                                    (in_array($groupmember->email, $inCockpitNotInKeycloaks) && $groupmember->toBeInNextCloud == 1)
+                                    || (in_array($groupmember->email, $notToBeInKeyCloaks) && $groupmember->toBeInNextCloud == 0)
+                                ) && (
+                                    Auth::user()->email == $groupmember->email
+                                    || Auth::user()->hasRole('Administratoren')
+                                    || Auth::user()->hasRole($group->keycloakAdminGroup)
+                                )
+                            )
                             {!! Form::open(['method' => 'POST','route' => ['groups.toggleMembershipInKeycloak', $groupmember->id],'style'=>'display:inline']) !!}
                             {!! Form::submit('KC korrigieren', ['class' => 'btn btn-warning btn-sm']) !!}
                             {!! Form::close() !!}

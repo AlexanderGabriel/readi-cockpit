@@ -97,10 +97,6 @@ class GroupsController extends Controller
             $canJoinGroup = true;
         }
 
-        $groupmemberemails = Array();
-        foreach ($groupmembers as $groupmember) {
-            array_push($groupmemberemails, $groupmember->email);
-        }
         $inCockpitNotInKeycloaks = Array();
         $inKeyCloakNotInCockpits = Array();
         $notToBeInKeyCloaks = Array();
@@ -108,7 +104,7 @@ class GroupsController extends Controller
         if($kc_groupmembers) {
             $kc_groupmemberemails = Array();
             foreach ($kc_groupmembers as $kc_groupmember) {
-                array_push($kc_groupmemberemails, $kc_groupmember->email);
+                array_push($kc_groupmemberemails, $kc_groupmember);
             }
             foreach ($groupmembers as $groupmember) {
                 if(!$groupmember->toBeInNextCloud && in_array($groupmember->email, $kc_groupmemberemails)) array_push($notToBeInKeyCloaks, $groupmember->email);
@@ -307,8 +303,8 @@ class GroupsController extends Controller
         $groupmember = Groupmember::findOrFail($id);
         $group_id = $groupmember->group_id;
         $group = Group::findOrFail($group_id);
-        //Nur Administratoren dürfen diese Eigenschaft bearbeiten
-        if(!Auth::hasRole('Administratoren') && !Auth::user()->hasRole($group->keycloakAdminGroup) && Auth::user()->email != $groupmember->email) {
+        //Nur Administratoren dürfen diese Eigenschaft bearbeiten oder der Anwender selbst, wenn er schon gejoint ist
+        if(!$groupmember->waitingForJoin && !Auth::hasRole('Administratoren') && !Auth::user()->hasRole($group->keycloakAdminGroup) && Auth::user()->email != $groupmember->email) {
             return abort(403);
         }
 
@@ -319,7 +315,7 @@ class GroupsController extends Controller
                 return redirect()->route('groups.show', $group_id)
                     ->withError(__('User existiert im Keycloak gar nicht.'));
             }
-            if(!$group->toggle_keycloakmember($group->keycloakGroup, $groupmember->email, $groupmember->toBeInNextCloud)) {
+            if(!$group->toggle_keycloakmember($group, $groupmember->email, $groupmember->toBeInNextCloud)) {
                 return redirect()->route('groups.show', $group_id)
                     ->withError(__('Gruppenmitgliedschaft wurde nicht abgeändert werden.'));
             }
@@ -337,7 +333,7 @@ class GroupsController extends Controller
             "toBeInMailinglist" => $groupmember->toBeInMailinglist,
         ]);
         return redirect()->route('groups.show', $group_id)
-            ->withSuccess(__('Nextcloud-Berechtigung wurden im Cockpit abgeändert. Der Automatik-Modus ist nicht aktiv, ein Gruppenadministrator muss die Änderungen erst durchführen'));
+            ->withSuccess(__('Nextcloud-Berechtigung wurden im Cockpit abgeändert. Der Automatik-Modus ist nicht aktiv. Um die Änderungen in der Benutzerverwaltung zu aktivieren drücke die Schaltfläche "KC korriegieren"'));
     }
 
     public function toggleToBeInGroup(request $request, string $id) {
@@ -441,8 +437,8 @@ class GroupsController extends Controller
         $groupmember = Groupmember::findOrFail($id);
         $group_id = $groupmember->group_id;
         $group = Group::findOrFail($group_id);
-        //Nur Administratoren dürfen diese Eigenschaft bearbeiten
-        if(!Auth::hasRole('Administratoren') && !Auth::user()->hasRole($group->keycloakAdminGroup)) {
+        //Nur Administratoren dürfen diese Eigenschaft bearbeiten und die jeweiligen User für sich selbst
+        if(!Auth::hasRole('Administratoren') && !Auth::user()->hasRole($group->keycloakAdminGroup) && !Auth::user()->email == $groupmember->email) {
             return abort(403);
         }
 
@@ -450,65 +446,14 @@ class GroupsController extends Controller
         $group_id = $groupmember->group_id;
         $group = Group::findOrFail($group_id);
 
-
-        //Keycloak-Infos abfragen
-        $client = new Client();
-        $res = $client->request('POST', env('KEYCLOAK_BASE_URL').'/realms/'.env('KEYCLOAK_REALM').'/protocol/openid-connect/token', [
-            'form_params' => [
-                'client_id' => 'admin-cli'
-                , 'username' => env('KEYCLOAK_API_USER')
-                , 'password' => env('KEYCLOAK_API_PASSWORD')
-                , 'grant_type' => 'password'
-                , 'scope' => 'openid'
-            ]
-        ]);
-        $access_token = json_decode($res->getBody())->access_token;
-
-        $headers = ['Authorization' => "bearer {$access_token}"];
-        $res = $client->request('GET', env('KEYCLOAK_BASE_URL').'/admin/realms/'.env('KEYCLOAK_REALM').'/groups/'.env('KEYCLOAK_PARENTGROUP'), ['headers' => $headers]);
-
-        $kc_groups = json_decode($res->getBody());
-        $foundKcGroup = false;
-        foreach($kc_groups->subGroups as $subgroup) {
-            if($subgroup->name == $group->keycloakGroup) {
-                $foundKcGroup = true;
-                $kc_group = $subgroup->id;
-            }
-        }
-
-        $res = $client->request('GET', env('KEYCLOAK_BASE_URL').'/admin/realms/'.env('KEYCLOAK_REALM').'/users?email='.$groupmember->email, ['headers' => $headers]);
-        $kc_users = json_decode($res->getBody());
-        $foundKcUser = false;
-        foreach($kc_users as $kc_user) {
-            if($kc_user->email == $groupmember->email) {
-                $foundKcUser = true;
-                $kc_user_id = $kc_user->id;
-            }
-        }
-
-        if($foundKcGroup && $foundKcUser) {
-            $res = $client->request('GET', env('KEYCLOAK_BASE_URL').'/admin/realms/'.env('KEYCLOAK_REALM').'/users/'.$kc_user_id.'/groups/', ['headers' => $headers]);
-            $kc_user_groups = json_decode($res->getBody());
-            $found_kc_user_group = false;
-            foreach($kc_user_groups as $kc_user_group) {
-                if($kc_user_group->name == $group->keycloakGroup) {
-                    $found_kc_user_group = true;
-                }
-            }
-            if($found_kc_user_group) {
-                $res = $client->delete(env('KEYCLOAK_BASE_URL').'/admin/realms/'.env('KEYCLOAK_REALM').'/users/'.$kc_user_id.'/groups/'.$kc_group, ['headers' => $headers]);
-            } else {
-                $res = $client->request('PUT', env('KEYCLOAK_BASE_URL').'/admin/realms/'.env('KEYCLOAK_REALM').'/users/'.$kc_user_id.'/groups/'.$kc_group, ['headers' => $headers]);
-            }
+        if($group->toggle_keycloakmember($group, $groupmember->email, !$groupmember->toBeInNextCloud)) {
             return redirect()->route('groups.show', $group_id)
             ->withSuccess(__('Keycloak-Gruppenzuordnung wurde abgeändert.'));
         }
-        if(!$foundKcUser) {
+        else {
             return redirect()->route('groups.show', $group_id)
-            ->withError(__('User existiert im Keycloak gar nicht.'));
+            ->withWarning(__('Nichts verändert.'));
         }
-        return redirect()->route('groups.show', $group_id)
-        ->withWarning(__('Nichts verändert.'));
 
     }
 

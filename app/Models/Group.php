@@ -77,14 +77,14 @@ class Group extends Model
         return $kc_groups;
     }
 
-    public function get_keycloakgroupbyname($group) {
+    public function get_keycloakgroupbyname(Group $group) {
         $this->connectToKeycloak();
         $res = $this->client->request('GET', env('KEYCLOAK_BASE_URL').'/admin/realms/'.env('KEYCLOAK_REALM').'/groups/'.env('KEYCLOAK_PARENTGROUP'), ['headers' => $this->headers]);
 
         $kc_groups = json_decode($res->getBody());
         $foundKcGroup = false;
         foreach($kc_groups->subGroups as $subgroup) {
-            if($subgroup->name == $group) {
+            if($subgroup->name == $group->keycloakGroup) {
                 $foundKcGroup = true;
                 $kc_group = $subgroup->id;
             }
@@ -108,13 +108,13 @@ class Group extends Model
         else return $kc_user_id;
     }
 
-    public function get_keycloakmembers($group)
+    public function get_keycloakmembers(Group $group)
     {
         $this->connectToKeycloak();
         $kc_groups = $this->get_keycloakgroups();
         $foundSubgroup = false;
         foreach($kc_groups->subGroups as $subgroup) {
-            if($subgroup->name == $group) {
+            if($subgroup->name == $group->keycloakGroup) {
                 $foundSubgroup = true;
                 $kc_group = $subgroup->id;
             }
@@ -131,7 +131,7 @@ class Group extends Model
         }
     }
 
-    public function toggle_keycloakmember($group, $email, $toBeInNextCloud) {
+    public function toggle_keycloakmember(Group $group, $email, $toBeInNextCloud) {
         $this->connectToKeycloak();
         $kc_groupmembers = $this->get_keycloakmembers($group);
         if($kc_groupmembers === false) return false;
@@ -139,6 +139,7 @@ class Group extends Model
         if($kc_user_id === false) return false;
         $kc_group = $this->get_keycloakgroupbyname($group);
         if($kc_group === false) return false;
+
 
         if(!in_array($email, $kc_groupmembers) && !$toBeInNextCloud) {
             $this->client->request('PUT', env('KEYCLOAK_BASE_URL').'/admin/realms/'.env('KEYCLOAK_REALM').'/users/'.$kc_user_id.'/groups/'.$kc_group, ['headers' => $this->headers]);
@@ -151,8 +152,5 @@ class Group extends Model
         }
         return true;
     }
-
-
-
 
 }

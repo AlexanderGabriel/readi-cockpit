@@ -19,7 +19,6 @@
         <table class="table table-striped">
             <thead>
             <tr>
-                <th scope="col" width="1%">#</th>
                 <th scope="col" width="15%">Name</th>
                 <th scope="col" width="15%">Beschreibung</th>
                 <th scope="col" width="15%">Moderiert</th>
@@ -38,7 +37,6 @@
             <tbody>
                 @foreach($groups as $group)
                     <tr>
-                        <th scope="row">{{ $group->id }}</th>
                         <td>{{ $group->name }}</td>
                         <td>{{ $group->description }}</td>
                         <td>@if ( $group->moderated == 1 )ja @else nein @endif </td>
