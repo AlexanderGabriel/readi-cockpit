@@ -270,11 +270,19 @@ class GroupsController extends Controller
             return abort(403);
         }
 
+        if($group->get_keycloakuserbymail($groupmember->email)) {
+            $group->toggle_keycloakmember($group, $groupmember->email, 0);
+        }
+        if(in_array($groupmember->email, $group->get_mailmanmembers())) {
+            $group->remove_mailmanmember($groupmember->email);
+        }
+
         //Member deleted while waiting for join?
         if($groupmember->waitingForJoin) {
             $groupname = $group->name;
             Mail::to($groupmember->email)->send(new JoinDeclined($groupname));
         }
+
         $groupmember->delete();
 
         return redirect()->route('groups.show', $group_id)
@@ -286,14 +294,22 @@ class GroupsController extends Controller
         $group_id = $groupmember->group_id;
         $group = Group::findOrFail($group_id);
         //Nur Administratoren dürfen diese Eigenschaft bearbeiten
-        if(!Auth::hasRole('Administratoren') && !Auth::user()->hasRole($group->keycloakAdminGroup)) {
+        if((Auth::user()->email == $groupmember->email && $groupmember->waitingforjoin) && !Auth::hasRole('Administratoren') && !Auth::user()->hasRole($group->keycloakAdminGroup)) {
             return abort(403);
+        }
+        $toBeInMailinglist = !$groupmember->toBeInMailinglist;
+        if($group->automatic_mode) {
+            if($toBeInMailinglist) {
+                $group->add_mailmanmember($groupmember->email);
+            }
+            else {
+                $group->remove_mailmanmember($groupmember->email);
+            }
         }
 
         $groupmember->update([
             "email" => $groupmember->email,
-            "toBeInNextCloud" => $groupmember->toBeInNextCloud,
-            "toBeInMailinglist" => !$groupmember->toBeInMailinglist,
+            "toBeInMailinglist" => $toBeInMailinglist,
         ]);
         return redirect()->route('groups.show', $group_id)
             ->withSuccess(__('Mailinglistenstatus wurde abgeändert.'));
@@ -308,6 +324,8 @@ class GroupsController extends Controller
             return abort(403);
         }
 
+        $toBeInNextCloud = !$groupmember->toBeInNextCloud;
+
         if($group->automatic_mode) {
             //Änderungen direkt durchführen
             //Wenn user existiert
@@ -315,7 +333,7 @@ class GroupsController extends Controller
                 return redirect()->route('groups.show', $group_id)
                     ->withError(__('User existiert im Keycloak gar nicht.'));
             }
-            if(!$group->toggle_keycloakmember($group, $groupmember->email, $groupmember->toBeInNextCloud)) {
+            if(!$group->toggle_keycloakmember($group, $groupmember->email, $toBeInNextCloud)) {
                 return redirect()->route('groups.show', $group_id)
                     ->withError(__('Gruppenmitgliedschaft wurde nicht abgeändert werden.'));
             }
@@ -445,8 +463,14 @@ class GroupsController extends Controller
         $groupmember = Groupmember::findOrFail($id);
         $group_id = $groupmember->group_id;
         $group = Group::findOrFail($group_id);
+        $toBeInNextCloud = !$groupmember->toBeInNextCloud;
 
-        if($group->toggle_keycloakmember($group, $groupmember->email, !$groupmember->toBeInNextCloud)) {
+        if(!$group->get_keycloakuserbymail($groupmember->email)) {
+            return redirect()->route('groups.show', $group_id)
+            ->withError(__('User existiert im Keycloak gar nicht. Muss sich erst registrieren.'));
+        }
+
+        if($group->toggle_keycloakmember($group, $groupmember->email, $toBeInNextCloud)) {
             return redirect()->route('groups.show', $group_id)
             ->withSuccess(__('Keycloak-Gruppenzuordnung wurde abgeändert.'));
         }
@@ -454,9 +478,7 @@ class GroupsController extends Controller
             return redirect()->route('groups.show', $group_id)
             ->withWarning(__('Nichts verändert.'));
         }
-
     }
-
 
     public function toggleMembershipInKeycloakByEmail(request $request, string $id) {
         $group = Group::findOrFail($id);

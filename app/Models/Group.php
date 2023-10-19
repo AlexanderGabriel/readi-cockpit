@@ -141,10 +141,10 @@ class Group extends Model
         if($kc_group === false) return false;
 
 
-        if(!in_array($email, $kc_groupmembers) && !$toBeInNextCloud) {
+        if(!in_array($email, $kc_groupmembers) && $toBeInNextCloud) {
             $this->client->request('PUT', env('KEYCLOAK_BASE_URL').'/admin/realms/'.env('KEYCLOAK_REALM').'/users/'.$kc_user_id.'/groups/'.$kc_group, ['headers' => $this->headers]);
         }
-        elseif (in_array($email, $kc_groupmembers) && $toBeInNextCloud) {
+        elseif (in_array($email, $kc_groupmembers) && !$toBeInNextCloud) {
             $this->client->delete(env('KEYCLOAK_BASE_URL').'/admin/realms/'.env('KEYCLOAK_REALM').'/users/'.$kc_user_id.'/groups/'.$kc_group, ['headers' => $this->headers]);
         }
         else {
