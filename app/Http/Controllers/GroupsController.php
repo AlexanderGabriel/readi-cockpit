@@ -65,7 +65,7 @@ class GroupsController extends Controller
 
         Group::create([
             "name" => $request->name,
-            "description" => $request->description,
+            "url" => $request->url,
             "keycloakGroup" => $request->keycloakGroup,
             "keycloakAdminGroup" => $request->keycloakAdminGroup,
             "moderated" => $newModerated,
@@ -197,7 +197,7 @@ class GroupsController extends Controller
         if(Auth::hasRole('Administratoren')) {
             $group->update([
                 "name" => $request->name,
-                "description" => $request->description,
+                "url" => $request->url,
                 "keycloakGroup" => $request->keycloakGroup,
                 "keycloakAdminGroup" => $request->keycloakAdminGroup,
                 "moderated" => $newModerated,
@@ -212,7 +212,7 @@ class GroupsController extends Controller
 
         if(Auth::user()->hasRole($group->keycloakAdminGroup)) {
             $group->update([
-                "description" => $request->description,
+                "url" => $request->url,
                 "moderated" => $newModerated,
                 ]
             );

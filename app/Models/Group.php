@@ -12,7 +12,7 @@ class Group extends Model
     use HasFactory;
     protected $fillable = [
         'name',
-        'description',
+        'url',
         'keycloakGroup',
         'keycloakAdminGroup',
         'moderated',

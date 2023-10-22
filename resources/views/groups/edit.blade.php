@@ -29,15 +29,15 @@
                 @endif
                 @endauth
                 <div class="mb-3">
-                    <label for="description" class="form-label">Beschreibung</label>
-                    <input value="{{ $group->description }}"
+                    <label for="url" class="form-label">URL</label>
+                    <input value="{{ $group->url }}"
                         type="text"
                         class="form-control"
-                        name="description"
-                        placeholder="description" required>
+                        name="url"
+                        placeholder="url" required>
 
-                    @if ($errors->has('description'))
-                        <span class="text-danger text-left">{{ $errors->first('description') }}</span>
+                    @if ($errors->has('url'))
+                        <span class="text-danger text-left">{{ $errors->first('url') }}</span>
                     @endif
                 </div>
                 <div class="mb-3">

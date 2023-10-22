@@ -23,14 +23,14 @@
                     @endif
                 </div>
                 <div class="mb-3">
-                    <label for="description" class="form-label">Beschreibung</label>
-                    <input value="{{ old('description') }}"
-                        type="description"
+                    <label for="url" class="form-label">URL</label>
+                    <input value="{{ old('url') }}"
+                        type="url"
                         class="form-control"
-                        name="description"
+                        name="url"
                         placeholder="Beschreibung" required>
-                    @if ($errors->has('description'))
-                        <span class="text-danger text-left">{{ $errors->first('description') }}</span>
+                    @if ($errors->has('url'))
+                        <span class="text-danger text-left">{{ $errors->first('url') }}</span>
                     @endif
                 </div>
                 <div class="mb-3">

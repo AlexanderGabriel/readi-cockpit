@@ -20,16 +20,8 @@
             <thead>
             <tr>
                 <th scope="col" width="15%">Name</th>
-                <th scope="col" width="15%">Beschreibung</th>
-                <th scope="col" width="15%">Moderiert</th>
-                <th scope="col" width="15%">Automatikmodus</th>
                 @auth
-                @if (Auth::user()->hasRole('Administratoren'))
-                <th scope="col" width="15%">Keycloak-Gruppe</th>
-                <th scope="col" width="15%">Keycloak Admin-Group</th>
-                <th scope="col" width="15%">Mailingliste</th>
                 <th scope="col" width="15%">URL</th>
-                @endif
                 @endauth
                 <th scope="col" width="1%" colspan="3"></th>
             </tr>
@@ -38,16 +30,8 @@
                 @foreach($groups as $group)
                     <tr>
                         <td>{{ $group->name }}</td>
-                        <td>{{ $group->description }}</td>
-                        <td>@if ( $group->moderated == 1 )ja @else nein @endif </td>
-                        <td>@if ( $group->automatic_mode == 1 )ja @else nein @endif </td>
                         @auth
-                        @if (Auth::user()->hasRole('Administratoren'))
-                        <td>{{ $group->keycloakGroup }}</td>
-                        <td>{{ $group->keycloakAdminGroup }}</td>
-                        <td>@if ( $group->has_mailinglist == 1 )ja @else nein @endif </td>
-                        <td>{{ $group->mailingListURL }}</td>
-                        @endif
+                        <td>{{ $group->url }}</td>
                         @endauth
                         <td><a href="{{ route('groups.show', $group->id) }}" class="btn btn-outline-primary btn-sm">Details anzeigen</a></td>
                         @auth

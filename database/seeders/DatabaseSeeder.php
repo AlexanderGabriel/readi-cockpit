@@ -15,7 +15,7 @@ class DatabaseSeeder extends Seeder
     {
         DB::table('groups')->insert([
             'name' => "Example Group 1",
-            'description' => "Example Group 1",
+            'url' => "https://example.com/wiki/PG_Group1",
             'keycloakGroup' => "PG_Group1",
             'keycloakAdminGroup' => "PG_Group1-Admins",
             'moderated' => 1,
@@ -23,7 +23,7 @@ class DatabaseSeeder extends Seeder
         ]);
         DB::table('groups')->insert([
             'name' => "Example Group 2",
-            'description' => "Example Group 2",
+            'url' => "https://example.com/wiki/PG_Group2",
             'keycloakGroup' => "PG_Group2",
             'keycloakAdminGroup' => "PG_Group2-Admins",
             'moderated' => 0,
