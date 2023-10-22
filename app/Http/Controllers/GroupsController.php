@@ -476,7 +476,7 @@ class GroupsController extends Controller
         $groupmember = Groupmember::findOrFail($id);
         $group_id = $groupmember->group_id;
         $group = Group::findOrFail($group_id);
-        $toBeInNextCloud = !$groupmember->toBeInNextCloud;
+        $toBeInNextCloud = $groupmember->toBeInNextCloud;
 
         if(!$group->get_keycloakuserbymail($groupmember->email)) {
             return redirect()->route('groups.show', $group_id)
