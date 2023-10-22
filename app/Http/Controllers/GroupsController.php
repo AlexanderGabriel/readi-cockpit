@@ -364,6 +364,19 @@ class GroupsController extends Controller
         }
         if(in_array(Auth::user()->email, $groupmemberemails)) {
             $groupmember = Groupmember::where([["email", Auth::user()->email], ["group_id", $id]])->get();
+
+            $groupmemberemail = $groupmember[0]->email;
+
+            if($group->automatic_mode) {
+                $kc_groupmembers = $group->get_keycloakmembers($group);
+                if(in_array($groupmemberemail, $kc_groupmembers)) {
+                    $group->toggle_keycloakmember($group, $groupmemberemail, 0);
+                }
+                if(in_array($groupmemberemail, $group->get_mailmanmembers())) {
+                    $group->remove_mailmanmember($groupmemberemail);
+                }
+            }
+
             $groupmember[0]->delete();
 
             return redirect()->route('groups.show', $id)
