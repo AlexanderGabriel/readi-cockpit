@@ -57,6 +57,11 @@ class GroupsController extends Controller
         } else {
             $newModerated = 1;
         }
+        if(!$request->has('automatic_mode')) {
+            $newautomatic_mode = 0;
+        } else {
+            $newautomatic_mode = 1;
+        }
 
         Group::create([
             "name" => $request->name,
@@ -68,6 +73,7 @@ class GroupsController extends Controller
             "mailingListURL" => $request->mailingListURL,
             "mailingListAdmin" => $request->mailingListAdmin,
             "mailingListPassword" => $request->mailingListPassword,
+            "automatic_mode" => $newautomatic_mode,
         ]);
 
         return redirect()->route('groups.index')
@@ -91,51 +97,26 @@ class GroupsController extends Controller
             $canJoinGroup = true;
         }
 
-        //Keycloak-Infos abfragen
-        $client = new Client();
-        $res = $client->request('POST', env('KEYCLOAK_BASE_URL').'/realms/'.env('KEYCLOAK_REALM').'/protocol/openid-connect/token', [
-            'form_params' => [
-                'client_id' => 'admin-cli'
-                , 'username' => env('KEYCLOAK_API_USER')
-                , 'password' => env('KEYCLOAK_API_PASSWORD')
-                , 'grant_type' => 'password'
-                , 'scope' => 'openid'
-            ]
-        ]);
-        $access_token = json_decode($res->getBody())->access_token;
-
-        $headers = ['Authorization' => "bearer {$access_token}"];
-        $res = $client->request('GET', env('KEYCLOAK_BASE_URL').'/admin/realms/'.env('KEYCLOAK_REALM').'/groups/'.env('KEYCLOAK_PARENTGROUP'), ['headers' => $headers]);
-
-        $kc_groups = json_decode($res->getBody());
-        $foundSubgroup = false;
-        foreach($kc_groups->subGroups as $subgroup) {
-            if($subgroup->name == $group->keycloakGroup) {
-                $foundSubgroup = true;
-                $kc_group = $subgroup->id;
-            }
-        }
         $inCockpitNotInKeycloaks = Array();
         $inKeyCloakNotInCockpits = Array();
-        $groupmemberemails = Array();
         $notToBeInKeyCloaks = Array();
-        if($foundSubgroup) {
-            $res = $client->request('GET', env('KEYCLOAK_BASE_URL')."/admin/realms/".env('KEYCLOAK_REALM')."/groups/$kc_group/members", ['headers' => $headers]);
-            $kc_groupmembers = json_decode($res->getBody());
-
+        $kc_groupmembers = $group->get_keycloakmembers($group);
+        if($kc_groupmembers) {
             $kc_groupmemberemails = Array();
             foreach ($kc_groupmembers as $kc_groupmember) {
-                array_push($kc_groupmemberemails, $kc_groupmember->email);
+                array_push($kc_groupmemberemails, $kc_groupmember);
             }
             foreach ($groupmembers as $groupmember) {
-                array_push($groupmemberemails, $groupmember->email);
                 if(!$groupmember->toBeInNextCloud && in_array($groupmember->email, $kc_groupmemberemails)) array_push($notToBeInKeyCloaks, $groupmember->email);
             }
 
             $inCockpitNotInKeycloaks = array_diff($groupmemberemails, $kc_groupmemberemails);
             $inKeyCloakNotInCockpits = array_diff($kc_groupmemberemails, $groupmemberemails);
         }
-        
+        else {
+            $inCockpitNotInKeycloaks = $groupmemberemails;
+        }
+
         $inMailmanNotInCockpits = Array();
         $inCockpitNotInMailmans = Array();
         $notToBeInMailmans = Array();
@@ -207,6 +188,11 @@ class GroupsController extends Controller
         } else {
             $newModerated = 1;
         }
+        if(!$request->has('automatic_mode')) {
+            $newautomatic_mode = 0;
+        } else {
+            $newautomatic_mode = 1;
+        }
 
         if(Auth::hasRole('Administratoren')) {
             $group->update([
@@ -219,6 +205,7 @@ class GroupsController extends Controller
                 "mailingListURL" => $request->mailingListURL,
                 "mailingListAdmin" => $request->mailingListAdmin,
                 "mailingListPassword" => $newMailingListPassword,
+                "automatic_mode" => $newautomatic_mode,
                 ]
             );
         }
@@ -283,11 +270,19 @@ class GroupsController extends Controller
             return abort(403);
         }
 
+        if($group->get_keycloakuserbymail($groupmember->email)) {
+            $group->toggle_keycloakmember($group, $groupmember->email, 0);
+        }
+        if(in_array($groupmember->email, $group->get_mailmanmembers())) {
+            $group->remove_mailmanmember($groupmember->email);
+        }
+
         //Member deleted while waiting for join?
         if($groupmember->waitingForJoin) {
             $groupname = $group->name;
             Mail::to($groupmember->email)->send(new JoinDeclined($groupname));
         }
+
         $groupmember->delete();
 
         return redirect()->route('groups.show', $group_id)
@@ -299,14 +294,22 @@ class GroupsController extends Controller
         $group_id = $groupmember->group_id;
         $group = Group::findOrFail($group_id);
         //Nur Administratoren dürfen diese Eigenschaft bearbeiten
-        if(!Auth::hasRole('Administratoren') && !Auth::user()->hasRole($group->keycloakAdminGroup)) {
+        if((Auth::user()->email == $groupmember->email && $groupmember->waitingforjoin) && !Auth::hasRole('Administratoren') && !Auth::user()->hasRole($group->keycloakAdminGroup)) {
             return abort(403);
+        }
+        $toBeInMailinglist = !$groupmember->toBeInMailinglist;
+        if($group->automatic_mode) {
+            if($toBeInMailinglist) {
+                $group->add_mailmanmember($groupmember->email);
+            }
+            else {
+                $group->remove_mailmanmember($groupmember->email);
+            }
         }
 
         $groupmember->update([
             "email" => $groupmember->email,
-            "toBeInNextCloud" => $groupmember->toBeInNextCloud,
-            "toBeInMailinglist" => !$groupmember->toBeInMailinglist,
+            "toBeInMailinglist" => $toBeInMailinglist,
         ]);
         return redirect()->route('groups.show', $group_id)
             ->withSuccess(__('Mailinglistenstatus wurde abgeändert.'));
@@ -316,18 +319,39 @@ class GroupsController extends Controller
         $groupmember = Groupmember::findOrFail($id);
         $group_id = $groupmember->group_id;
         $group = Group::findOrFail($group_id);
-        //Nur Administratoren dürfen diese Eigenschaft bearbeiten
-        if(!Auth::hasRole('Administratoren') && !Auth::user()->hasRole($group->keycloakAdminGroup)) {
+        //Nur Administratoren dürfen diese Eigenschaft bearbeiten oder der Anwender selbst, wenn er schon gejoint ist
+        if(!$groupmember->waitingForJoin && !Auth::hasRole('Administratoren') && !Auth::user()->hasRole($group->keycloakAdminGroup) && Auth::user()->email != $groupmember->email) {
             return abort(403);
         }
 
+        $toBeInNextCloud = !$groupmember->toBeInNextCloud;
+
+        if($group->automatic_mode) {
+            //Änderungen direkt durchführen
+            //Wenn user existiert
+            if(!$group->get_keycloakuserbymail($groupmember->email)) {
+                return redirect()->route('groups.show', $group_id)
+                    ->withError(__('User existiert im Keycloak gar nicht.'));
+            }
+            if(!$group->toggle_keycloakmember($group, $groupmember->email, $toBeInNextCloud)) {
+                return redirect()->route('groups.show', $group_id)
+                    ->withError(__('Gruppenmitgliedschaft wurde nicht abgeändert werden.'));
+            }
+            $groupmember->update([
+                "email" => $groupmember->email,
+                "toBeInNextCloud" => !$groupmember->toBeInNextCloud,
+                "toBeInMailinglist" => $groupmember->toBeInMailinglist,
+            ]);
+            return redirect()->route('groups.show', $group_id)
+                ->withSuccess(__('Nextcloud-Berechtigung wurde abgeändert.'));
+        }
         $groupmember->update([
             "email" => $groupmember->email,
             "toBeInNextCloud" => !$groupmember->toBeInNextCloud,
             "toBeInMailinglist" => $groupmember->toBeInMailinglist,
         ]);
         return redirect()->route('groups.show', $group_id)
-            ->withSuccess(__('Mailinglistenstatus wurde abgeändert.'));
+            ->withSuccess(__('Nextcloud-Berechtigung wurden im Cockpit abgeändert. Der Automatik-Modus ist nicht aktiv. Um die Änderungen in der Benutzerverwaltung zu aktivieren drücke die Schaltfläche "KC korriegieren"'));
     }
 
     public function toggleToBeInGroup(request $request, string $id) {
@@ -431,77 +455,30 @@ class GroupsController extends Controller
         $groupmember = Groupmember::findOrFail($id);
         $group_id = $groupmember->group_id;
         $group = Group::findOrFail($group_id);
-        //Nur Administratoren dürfen diese Eigenschaft bearbeiten
-        if(!Auth::hasRole('Administratoren') && !Auth::user()->hasRole($group->keycloakAdminGroup)) {
+        //Nur Administratoren dürfen diese Eigenschaft bearbeiten und die jeweiligen User für sich selbst
+        if(!Auth::hasRole('Administratoren') && !Auth::user()->hasRole($group->keycloakAdminGroup) && !Auth::user()->email == $groupmember->email) {
             return abort(403);
         }
 
         $groupmember = Groupmember::findOrFail($id);
         $group_id = $groupmember->group_id;
         $group = Group::findOrFail($group_id);
+        $toBeInNextCloud = !$groupmember->toBeInNextCloud;
 
-
-        //Keycloak-Infos abfragen
-        $client = new Client();
-        $res = $client->request('POST', env('KEYCLOAK_BASE_URL').'/realms/'.env('KEYCLOAK_REALM').'/protocol/openid-connect/token', [
-            'form_params' => [
-                'client_id' => 'admin-cli'
-                , 'username' => env('KEYCLOAK_API_USER')
-                , 'password' => env('KEYCLOAK_API_PASSWORD')
-                , 'grant_type' => 'password'
-                , 'scope' => 'openid'
-            ]
-        ]);
-        $access_token = json_decode($res->getBody())->access_token;
-
-        $headers = ['Authorization' => "bearer {$access_token}"];
-        $res = $client->request('GET', env('KEYCLOAK_BASE_URL').'/admin/realms/'.env('KEYCLOAK_REALM').'/groups/'.env('KEYCLOAK_PARENTGROUP'), ['headers' => $headers]);
-
-        $kc_groups = json_decode($res->getBody());
-        $foundKcGroup = false;
-        foreach($kc_groups->subGroups as $subgroup) {
-            if($subgroup->name == $group->keycloakGroup) {
-                $foundKcGroup = true;
-                $kc_group = $subgroup->id;
-            }
+        if(!$group->get_keycloakuserbymail($groupmember->email)) {
+            return redirect()->route('groups.show', $group_id)
+            ->withError(__('User existiert im Keycloak gar nicht. Muss sich erst registrieren.'));
         }
 
-        $res = $client->request('GET', env('KEYCLOAK_BASE_URL').'/admin/realms/'.env('KEYCLOAK_REALM').'/users?email='.$groupmember->email, ['headers' => $headers]);
-        $kc_users = json_decode($res->getBody());
-        $foundKcUser = false;
-        foreach($kc_users as $kc_user) {
-            if($kc_user->email == $groupmember->email) {
-                $foundKcUser = true;
-                $kc_user_id = $kc_user->id;
-            }
-        }
-
-        if($foundKcGroup && $foundKcUser) {
-            $res = $client->request('GET', env('KEYCLOAK_BASE_URL').'/admin/realms/'.env('KEYCLOAK_REALM').'/users/'.$kc_user_id.'/groups/', ['headers' => $headers]);
-            $kc_user_groups = json_decode($res->getBody());
-            $found_kc_user_group = false;
-            foreach($kc_user_groups as $kc_user_group) {
-                if($kc_user_group->name == $group->keycloakGroup) {
-                    $found_kc_user_group = true;
-                }
-            }
-            if($found_kc_user_group) {
-                $res = $client->delete(env('KEYCLOAK_BASE_URL').'/admin/realms/'.env('KEYCLOAK_REALM').'/users/'.$kc_user_id.'/groups/'.$kc_group, ['headers' => $headers]);
-            } else {
-                $res = $client->request('PUT', env('KEYCLOAK_BASE_URL').'/admin/realms/'.env('KEYCLOAK_REALM').'/users/'.$kc_user_id.'/groups/'.$kc_group, ['headers' => $headers]);
-            }
+        if($group->toggle_keycloakmember($group, $groupmember->email, $toBeInNextCloud)) {
             return redirect()->route('groups.show', $group_id)
             ->withSuccess(__('Keycloak-Gruppenzuordnung wurde abgeändert.'));
         }
-        if(!$foundKcUser) {
+        else {
             return redirect()->route('groups.show', $group_id)
-            ->withError(__('User existiert im Keycloak gar nicht.'));
+            ->withWarning(__('Nichts verändert.'));
         }
-        return redirect()->route('groups.show', $group_id)
-        ->withWarning(__('Nichts verändert.'));
-
     }
-
 
     public function toggleMembershipInKeycloakByEmail(request $request, string $id) {
         $group = Group::findOrFail($id);
@@ -581,17 +558,17 @@ class GroupsController extends Controller
         if(!$group->has_mailinglist) {
             return redirect()->route('groups.show', $group_id)
             ->withWarning(__('Die Gruppe hat keine Mailingliste.'));
-        } 
+        }
 
         $mailmanMembers = $group->get_mailmanmembers();
         if(!in_array($groupmember->email, $mailmanMembers)) {
-            $group->add_mailmanmembers([$groupmember->email]);
+            $group->add_mailmanmember($groupmember->email);
 
             return redirect()->route('groups.show', $group_id)
             ->withSuccess(__('User wurde der Mailingliste hinzugefügt.'));
         }
         else {
-            $group->remove_mailmanmembers([$groupmember->email]);
+            $group->remove_mailmanmember($groupmember->email);
             return redirect()->route('groups.show', $group_id)
             ->withSuccess(__('User wurde aus Mailman entfernt.'));
         }
@@ -607,20 +584,16 @@ class GroupsController extends Controller
 
         $mailmanMembers = $group->get_mailmanmembers();
         if(!in_array($request->email, $mailmanMembers)) {
-            $group->add_mailmanmembers([$request->email]);
+            $group->add_mailmanmember($request->email);
 
             return redirect()->route('groups.show', $id)
             ->withSuccess(__('User wurde der Mailingliste hinzugefügt.'));
         }
         else {
-            $group->remove_mailmanmembers([$request->email]);
+            $group->remove_mailmanmember($request->email);
             return redirect()->route('groups.show', $id)
             ->withSuccess(__('User wurde aus Mailman entfernt.'));
         }
 
     }
-
-
-
-
 }

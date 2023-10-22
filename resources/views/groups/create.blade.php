@@ -34,6 +34,20 @@
                     @endif
                 </div>
                 <div class="mb-3">
+                    {!! Form::checkbox('moderated', "1", old('moderated'), ['class' => 'form-check-input', "id" => "moderated" ]) !!}
+                    {!! Form::label('moderated', 'ist moderiert (kein automatischer Beitritt)', ['class' => 'form-check-label', 'for' => 'moderated']) !!}
+                    @if ($errors->has('moderated'))
+                        <span class="text-danger text-left">{{ $errors->first('moderated') }}</span>
+                    @endif
+                </div>
+                <div class="mb-3">
+                    {!! Form::checkbox('automatic_mode', "1", old('automatic_mode'), ['class' => 'form-check-input', "id" => "automatic_mode" ]) !!}
+                    {!! Form::label('automatic_mode', 'Automatikmodus', ['class' => 'form-check-label', 'for' => 'automatic_mode']) !!}
+                    @if ($errors->has('automatic_mode'))
+                        <span class="text-danger text-left">{{ $errors->first('automatic_mode') }}</span>
+                    @endif
+                </div>
+                <div class="mb-3">
                     <label for="keycloakGroup" class="form-label">Keycloak-Gruppe</label>
                     <input value="{{ old('keycloakGroup') }}"
                         type="text"
@@ -55,27 +69,13 @@
                         <span class="text-danger text-left">{{ $errors->first('keycloakAdminGroup') }}</span>
                     @endif
                 </div>
-
-                <div class="mb-3">
-                    {!! Form::checkbox('moderated', "1", old('moderated'), ['class' => 'form-check-input', "id" => "moderated" ]) !!}
-
-                    {!! Form::label('moderated', 'ist moderiert (kein automatischer Beitritt)', ['class' => 'form-check-label', 'for' => 'moderated']) !!}
-
-                    @if ($errors->has('moderated'))
-                        <span class="text-danger text-left">{{ $errors->first('moderated') }}</span>
-                    @endif
-                </div>
-
                 <div class="mb-3">
                     {!! Form::checkbox('has_mailinglist', "1", old('has_mailinglist'), ['class' => 'form-check-input', "id" => "has_mailinglist" ]) !!}
-
                     {!! Form::label('has_mailinglist', 'hat eine Mailing-Liste', ['class' => 'form-check-label', 'for' => 'has_mailinglist']) !!}
-
                     @if ($errors->has('has_mailinglist'))
                         <span class="text-danger text-left">{{ $errors->first('has_mailinglist') }}</span>
                     @endif
                 </div>
-
                 <div class="mb-3">
                     <label for="mailingListURL" class="form-label">URL zur Mailingliste</label>
                     <input value="{{ old('mailingListURL') }}"
