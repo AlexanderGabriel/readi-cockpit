@@ -31,7 +31,7 @@
                     <tr>
                         <td>{{ $group->name }}</td>
                         @auth
-                        <td>{{ $group->url }}</td>
+                        <td>@if(trim($group->url) != "" )<a href="{{ $group->url }}" target="_blank">{{ $group->url }}</a>@else - @endif</td>
                         @endauth
                         <td><a href="{{ route('groups.show', $group->id) }}" class="btn btn-outline-primary btn-sm">Details anzeigen</a></td>
                         @auth
