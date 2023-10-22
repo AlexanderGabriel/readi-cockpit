@@ -91,7 +91,7 @@
                             {!! Form::submit('Genehmigen', ['class' => 'btn btn-success btn-sm']) !!}
                             {!! Form::close() !!}
                             @else
-                            {{ $groupmember->email }} @if($groupmember->waitingForJoin)(wartet auf Beitrigg)@endif
+                            {{ $groupmember->email }} @if($groupmember->waitingForJoin)(wartet auf Beitritt)@endif
                             @endif
                         </td>
                         @if (!$groupmember->waitingForJoin && ($groupmember->email == Auth::user()->email || (Auth::user()->hasRole('Administratoren') || Auth::user()->hasRole($group->keycloakAdminGroup))))
